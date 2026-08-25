@@ -1,0 +1,27 @@
+Installing the models:
+
+source venv/bin/activate
+
+# 1. Download Wan 2.1 14B Text-to-Video Diffusion Model (FP8 / Quantized)
+huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/diffusion_models/wan2.1_t2v_14B_fp8_e4m3fn.safetensors --local-dir models/diffusion_models --local-dir-use-symlinks False
+
+# 2. Download Text Encoders (T5-XXL)
+huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors --local-dir models/text_encoders --local-dir-use-symlinks False
+
+# 3. Download the Wan 2.1 Video VAE
+huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/vae/wan_2.1_vae.safetensors --local-dir models/vae --local-dir-use-symlinks False
+
+
+Tools Installed in the opencode machine:
+
+faster-whisper, yt-dlp, and ffmpeg, and composio cli
+
+faster-whisper Installation:
+
+uv venv clipping-env --python 3.12.12
+
+source clipping-env/bin/activate
+
+uv pip install -r requirements.txt
+
+OPENCODE_EXPERIMENTAL_LSP_TOOL=true OPENCODE_EXPERIMENTAL=true opencode --agent clipping_agent
