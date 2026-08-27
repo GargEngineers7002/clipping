@@ -14,7 +14,7 @@ huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/vae/wa
 
 Tools Installed in the opencode machine:
 
-faster-whisper, yt-dlp, and ffmpeg, and composio cli
+yt-dlp, and ffmpeg, and composio cli
 
 faster-whisper Installation:
 
@@ -24,4 +24,66 @@ source clipping-env/bin/activate
 
 uv pip install -r requirements.txt
 
+
 OPENCODE_EXPERIMENTAL_LSP_TOOL=true OPENCODE_EXPERIMENTAL=true opencode --agent clipping_agent
+
+
+opencode.json:
+
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "lsp": true,
+  "permission": {
+    "websearch": "allow"
+  },
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Remote",
+      "options": {
+        "baseURL": "http://100.72.216.28:11434/v1"
+      },
+      "models": {
+        "qwen3-coder:30b": {
+          "name": "qwen3-coder:30b"
+        }
+      }
+    }
+  },
+  "mcp": {
+    "composio": {
+      "type": "remote",
+      "url": "https://connect.composio.dev/mcp",
+      "headers": {
+        "x-consumer-api-key": "ck_SjmsUmWdVVr6_lKKKcOh"
+      },
+      "enabled": true
+    },
+    "dart-mcp-server": {
+      "type": "local",
+      "command": [
+        "dart",
+        "mcp-server"
+      ],
+      "enabled": false,
+      "environment": {}
+    }
+  },
+  "tools": {
+    "composio*": false
+  },
+  "agent": {
+    "clipping_agent": {
+      "tools": {
+        "composio*": true
+      }
+    },
+    "linkedin_agent": {
+      "tools": {
+        "composio*": true
+      }
+    }
+  }
+}
+
