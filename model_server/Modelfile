@@ -1,0 +1,5 @@
+# Base Qwen 3.8 27B 4-bit model
+FROM qwen3.8:27b
+
+# Sets context window to 64K tokens
+PARAMETER num_ctx 65536
