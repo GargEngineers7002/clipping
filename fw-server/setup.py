@@ -22,7 +22,7 @@ def main():
         # We specify device="cpu" just for the download step, so this script doesn't fail 
         # if run on a machine without a GPU (e.g. for pre-baking a docker image).
         # When main.py runs, it will load this cached model into the GPU.
-        model = WhisperModel("large-v3", device="cpu", compute_type="float16")
+        model = WhisperModel("large-v3", device="cuda", compute_type="float16")
         print("SUCCESS: Model 'large-v3' downloaded and cached successfully!")
     except Exception as e:
         print(f"Error downloading model: {e}")
