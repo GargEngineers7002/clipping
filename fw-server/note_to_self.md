@@ -6,6 +6,8 @@ source fw_server_venv/bin/activate
 
 uv pip install -r requirements.txt
 
+python setup.py
+
 ---
 
 Create a service file at /etc/systemd/system/fw-server.service with the following content, adjusting the paths to match your installation:
@@ -17,8 +19,8 @@ After=network.target
 [Service]
 Type=simple
 User=server
-WorkingDirectory=/home/server/.keras/clipping/fw-server
-ExecStart=/home/server/.keras/clipping/fw-server/fw_server_venv/bin/python main.py --listen 0.0.0.0
+WorkingDirectory=/home/server/.keras/datasets/clipping/fw-server
+ExecStart=/home/server/.keras/datasets/clipping/fw-server/fw_server_venv/bin/python main.py
 Restart=on-failure
 
 [Install]
