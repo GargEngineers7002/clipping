@@ -53,7 +53,7 @@ sudo systemctl start server_q.service
 sudo nvim /etc/systemd/system/server_v.service
 
 [Unit]
-Description=vLLM Video Generation Server (Wan 2.2)
+Description=Server_v
 After=network.target
 
 [Service]
