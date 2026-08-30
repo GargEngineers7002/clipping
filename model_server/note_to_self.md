@@ -16,8 +16,8 @@ uv pip install -r requirements.txt
 
 ---
 
-huggingface-cli download Qwen/Qwen3.8-27B-AWQ
-huggingface-cli download Wan-AI/Wan2.2-T2V-A14B-FP8
+hf download abihsoro/Qwen3.8-27B-AWQ-INT4
+hf download unsloth/Wan2.2-T2V-A14B-FP8
 
 ---
 
@@ -32,7 +32,7 @@ Type=simple
 User=root
 Environment="HF_HOME=/home/server/.cache/huggingface"
 Environment="VLLM_SERVER_DEV_MODE=1"
-ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve Qwen/Qwen3.8-27B-AWQ \
+ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve abihsoro/Qwen3.8-27B-AWQ-INT4 \
  --quantization awq \
  --gpu-memory-utilization 0.90 \
  --tensor-parallel-size 1 \
@@ -45,7 +45,7 @@ ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/b
 
 # This line automatically pushes the server into Level 2 Sleep 5 seconds after boot
 
-ExecStartPost=/bin/bash -c "sleep 5 && curl -s -X POST 'http://0.0.0.0:58328/sleep?level=2'"
+ExecStartPost=/bin/bash -c "until curl -s -f http://0.0.0.0:58328/health > /dev/null; do sleep 5; done; curl -s -X POST 'http://0.0.0.0:58328/sleep?level=2'"
 
 Restart=always
 RestartSec=5
@@ -73,8 +73,8 @@ Environment="VLLM_SERVER_DEV_MODE=1"
 
 # We invoke vllm-omni to handle the native video diffusion transformer architecture
 
-ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm-omni serve Wan-AI/Wan2.2-T2V-A14B-FP8 \
- --gpu-memory-utilization 0.95 \
+ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm-omni serve unsloth/Wan2.2-T2V-A14B-FP8 \
+ --gpu-memory-utilization 0.90 \
  --tensor-parallel-size 1 \
  --pipeline-parallel-size 2 \
  --enforce-eager \
@@ -84,14 +84,15 @@ ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/b
 
 # Pushes the video server cleanly into Level 2 Sleep 5 seconds after initialization
 
-ExecStartPost=/bin/bash -c "sleep 5 && curl -s -X POST 'http://0.0.0.0:58329/sleep?level=2'"
+ExecStartPost=/bin/bash -c "until curl -s -f http://0.0.0.0:58329/health > /dev/null; do sleep 5; done; curl -s -X POST 'http://0.0.0.0:58329/sleep?level=2'"
 
 Restart=always
 RestartSec=5
 
-[Install]
-WantedBy=multi-user.target
+# Do NOT include WantedBy=multi-user.target here to prevent boot-time VRAM collisions with Qwen.
+# Stagger the boot using a master startup script.
 
 sudo systemctl daemon-reload
-sudo systemctl enable server_v.service
-sudo systemctl start server_v.service
+# sudo systemctl enable server_v.service <-- Do NOT enable!
+# Instead, start it manually or via a staggered boot script after Qwen sleeps:
+# sudo systemctl start server_v.service
