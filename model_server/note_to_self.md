@@ -33,7 +33,7 @@ User=root
 Environment="HF_HOME=/home/server/.cache/huggingface"
 Environment="VLLM_SERVER_DEV_MODE=1"
 ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve abihsoro/Qwen3.8-27B-AWQ-INT4 \
- --quantization awq \
+ --trust-remote-code \
  --gpu-memory-utilization 0.90 \
  --tensor-parallel-size 1 \
  --pipeline-parallel-size 2 \
