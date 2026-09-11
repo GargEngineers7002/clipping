@@ -192,7 +192,7 @@ sympy==1.14.0
 tabulate==0.10.0
 tiktoken==0.14.0
 tilelang==0.1.9
-tokenizers==0.23.1
+tokenizers==0.23.0
 tokenspeed-mla==0.1.8
 tokenspeed-triton==3.8.10.post20260721
 torch==2.11.0
@@ -204,7 +204,7 @@ torchsde==0.2.6
 torchvision==0.26.0
 tqdm==4.70.0
 trampoline==0.1.2
-transformers==5.16.1
+transformers==5.15.0
 triton==3.6.0
 truststore==0.10.4
 typer==0.27.2
