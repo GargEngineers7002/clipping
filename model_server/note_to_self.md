@@ -35,12 +35,11 @@ Environment="HF_HOME=/home/server/.cache/huggingface"
 Environment="VLLM_SERVER_DEV_MODE=1"
 ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve nicosuter/Qwen3.8-27B-AWQ \
  --trust-remote-code \
- --quantization awq \
  --enable-auto-tool-choice \
  --tool-call-parser hermes \
  --gpu-memory-utilization 0.90 \
- --tensor-parallel-size 1 \
- --pipeline-parallel-size 2 \
+ --tensor-parallel-size 2 \
+ --pipeline-parallel-size 1 \
  --enforce-eager \
  --max-model-len auto \
  --enable-sleep-mode \
