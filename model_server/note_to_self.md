@@ -33,7 +33,7 @@ User=root
 TimeoutStartSec=600
 Environment="HF_HOME=/home/server/.cache/huggingface"
 Environment="VLLM_SERVER_DEV_MODE=1"
-ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve cyankiwi/Qwen3.8-27B-AWQ-INT4 \
+ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve RedHatAI/Qwen3.8-27B-INT4 \
  --trust-remote-code \
  --enable-auto-tool-choice \
  --tool-call-parser hermes \
