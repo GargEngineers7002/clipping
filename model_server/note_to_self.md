@@ -36,12 +36,13 @@ Environment="VLLM_SERVER_DEV_MODE=1"
 ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/bin/vllm serve RedHatAI/Qwen3.8-27B-INT4 \
  --trust-remote-code \
  --enable-auto-tool-choice \
- --tool-call-parser hermes \
- --gpu-memory-utilization 0.90 \
- --tensor-parallel-size 2 \
- --pipeline-parallel-size 1 \
+ --tool-call-parser qwen3_coder \
+ --reasoning-parser qwen3 \
+ --gpu-memory-utilization 0.88 \
+ --tensor-parallel-size 1 \
+ --pipeline-parallel-size 2 \
+ --max-model-len 16384 \
  --enforce-eager \
- --max-model-len auto \
  --enable-sleep-mode \
  --host 0.0.0.0 \
  --port 58328
