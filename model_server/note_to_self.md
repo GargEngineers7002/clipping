@@ -42,6 +42,7 @@ ExecStart=/home/server/.keras/datasets/clipping/model_server/model_server_venv/b
  --tensor-parallel-size 1 \
  --pipeline-parallel-size 2 \
  --max-model-len 16384 \
+ --kv-cache-dtype fp16 \
  --enforce-eager \
  --enable-sleep-mode \
  --host 0.0.0.0 \
