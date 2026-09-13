@@ -2,16 +2,20 @@ import requests
 import sys
 
 def main():
-    # The Qwen server IP is 100.72.216.28 and we set it to port 58328
-    # Using level=2 to fully offload weights and KV cache to maximize free VRAM
-    url = "http://100.72.216.28:58328/sleep?level=2"
+    # The Ollama server IP is 100.72.216.28 and port 11434
+    url = "http://100.72.216.28:11434/api/generate"
     
-    print(f"Sending sleep request to Qwen server at {url}...")
+    # Unload the model by sending keep_alive=0
+    payload = {
+        "model": "qwen3.8:27b",
+        "keep_alive": 0
+    }
+    
+    print(f"Sending sleep request to Ollama server at {url}...")
     try:
-        response = requests.post(url, timeout=15)
+        response = requests.post(url, json=payload, timeout=15)
         response.raise_for_status()
-        print("SUCCESS: Qwen server has been put to sleep (Level 2).")
-        print(f"Response: {response.text}")
+        print("SUCCESS: Qwen server has been put to sleep (VRAM cleared).")
     except requests.exceptions.RequestException as e:
         print(f"ERROR: Failed to put the server to sleep: {e}")
         sys.exit(1)
