@@ -5,76 +5,71 @@ import json
 import uuid
 
 # Configuration
-# Assuming both servers are on the same machine but different ports
-QWEN_SERVER_URL = "http://100.72.216.28:58328"
-WAN_SERVER_URL = "http://100.72.216.28:58329"
+OLLAMA_SERVER_URL = "http://100.72.216.28:11434"
+OLLAMA_MODEL_NAME = "qwen3.8:27b"
+COMFYUI_PORTS = [58328, 58329]
 
 OUTPUT_DIR = "/home/garg7002/clipping/ai_generated_videos"
 PROMPTS_FILE = "/home/garg7002/clipping/video_prompts.json"
 
-def set_sleep_state(server_url, sleep: bool):
+def set_ollama_sleep_state(sleep: bool):
     """
-    Sends a request to the vLLM server to either wake it up or put it to sleep (Level 2).
-    Level 2 sleep offloads both model weights and KV cache to free up VRAM.
+    Sends a request to the Ollama server to either wake it up or put it to sleep.
+    sleep=True sets keep_alive to 0 to instantly unload from VRAM.
+    sleep=False sets keep_alive to -1 to load it into VRAM.
     """
-    if sleep:
-        endpoint = f"{server_url}/sleep?level=2"
-        action = "Sleep (Level 2)"
-    else:
-        endpoint = f"{server_url}/wake_up"
-        action = "Wake up"
+    endpoint = f"{OLLAMA_SERVER_URL}/api/generate"
+    payload = {
+        "model": OLLAMA_MODEL_NAME,
+        "keep_alive": 0 if sleep else -1
+    }
+    action = "Sleep (Unload VRAM)" if sleep else "Wake up (Preload VRAM)"
         
-    print(f"[{server_url}] Sending {action} request...")
+    print(f"[Ollama] Sending {action} request...")
     try:
-        response = requests.post(endpoint, timeout=30)
+        response = requests.post(endpoint, json=payload, timeout=30)
         response.raise_for_status()
-        print(f"[{server_url}] SUCCESS: Processed {action} request.")
-        # Give the GPU a moment to physically offload/load the weights
+        print(f"[Ollama] SUCCESS: Processed {action}.")
         time.sleep(3)
     except requests.exceptions.RequestException as e:
-        print(f"[{server_url}] ERROR: Failed to {action.lower()} server: {e}")
-        raise
+        print(f"[Ollama] ERROR: Failed to {action.lower()} server: {e}")
 
-def generate_video(prompt):
+def free_comfyui_vram():
     """
-    Sends the prompt to the Wan video model and saves the output.
+    Sends requests to both ComfyUI servers to unload models and free memory.
     """
-    print(f"\n>> Generating video for prompt: '{prompt}'")
+    print("\n[ComfyUI] Freeing VRAM on both ComfyUI servers...")
+    payload = {"unload_models": True, "free_memory": True}
+    for port in COMFYUI_PORTS:
+        endpoint = f"http://127.0.0.1:{port}/free"
+        try:
+            response = requests.post(endpoint, json=payload, timeout=15)
+            response.raise_for_status()
+            print(f"[ComfyUI Port {port}] SUCCESS: VRAM freed.")
+        except requests.exceptions.RequestException as e:
+            print(f"[ComfyUI Port {port}] ERROR: Failed to free VRAM: {e}")
+
+def generate_video(prompt, port):
+    """
+    Sends the prompt to a ComfyUI server.
+    NOTE: You must replace `workflow` with your actual exported ComfyUI Wan 2.1 API JSON!
+    """
+    print(f"\n>> Queuing video for prompt: '{prompt}' on ComfyUI port {port}")
     
-    # Endpoint depends on how vLLM-omni exposes the video generation API.
-    # Usually it's an OpenAI-compatible completions endpoint.
-    endpoint = f"{WAN_SERVER_URL}/v1/completions" 
+    endpoint = f"http://127.0.0.1:{port}/prompt" 
     
-    payload = {
-        "model": "Wan-AI/Wan2.2-T2V-A14B-FP8",
-        "prompt": prompt,
-        "max_tokens": 100, # Adjust parameters based on vllm-omni requirements
+    # This is a placeholder for your actual ComfyUI workflow API JSON.
+    # You will need to parse your exported JSON and inject the `prompt` variable into the correct node.
+    workflow = {
+        "prompt": {} 
     }
     
     try:
-        # Video generation takes significant time, so we set a high timeout (e.g., 10 mins)
-        response = requests.post(endpoint, json=payload, timeout=600)
+        response = requests.post(endpoint, json=workflow, timeout=30)
         response.raise_for_status()
-        
-        # Save output to ai_generated_videos/
-        video_filename = f"video_{uuid.uuid4().hex[:8]}.mp4"
-        video_path = os.path.join(OUTPUT_DIR, video_filename)
-        
-        # Depending on vllm-omni, it may return raw bytes or a JSON payload containing base64/url
-        content_type = response.headers.get("content-type", "")
-        
-        if "application/json" in content_type:
-            # If it's JSON, write the JSON directly (Opencode can parse it later to extract base64)
-            data = response.json()
-            json_path = video_path + ".json"
-            with open(json_path, "w") as f:
-                json.dump(data, f, indent=2)
-            print(f">> Saved JSON output to {json_path}")
-        else:
-            # If it returns raw video bytes
-            with open(video_path, "wb") as f:
-                f.write(response.content)
-            print(f">> Saved raw video to {video_path}")
+        data = response.json()
+        print(f">> Successfully queued prompt! Prompt ID: {data.get('prompt_id')}")
+        # Note: To actually wait for it to finish, you would need to poll http://127.0.0.1:{port}/history/{prompt_id}
             
     except requests.exceptions.RequestException as e:
         print(f">> ERROR: Video generation failed for prompt '{prompt}': {e}")
@@ -85,7 +80,6 @@ def main():
     # 1. Read prompts stored by Opencode
     if not os.path.exists(PROMPTS_FILE):
         print(f"Waiting for prompts... {PROMPTS_FILE} does not exist.")
-        # Create a dummy one for testing
         with open(PROMPTS_FILE, "w") as f:
             json.dump(["A majestic lion roaring in the savanna", "A futuristic car driving through neon city"], f)
             
@@ -98,24 +92,27 @@ def main():
         
     print(f"Found {len(prompts)} prompts. Initiating pipeline...")
     
-    # 2. Free up VRAM by putting Qwen to sleep
+    # 2. Free up VRAM by putting Ollama (Qwen) to sleep
     print("\n--- Transitioning GPU for Video Generation ---")
-    set_sleep_state(QWEN_SERVER_URL, sleep=True)
+    set_ollama_sleep_state(sleep=True)
     
-    # 3. Wake up Wan video model
-    set_sleep_state(WAN_SERVER_URL, sleep=False)
-    
-    # 4. Process all prompts sequentially
-    print("\n--- Starting Video Generation ---")
-    for prompt in prompts:
-        generate_video(prompt)
+    # 3. Process all prompts, alternating between ComfyUI servers for load balancing
+    print("\n--- Queuing Video Generations to ComfyUI ---")
+    for idx, prompt in enumerate(prompts):
+        port = COMFYUI_PORTS[idx % len(COMFYUI_PORTS)]
+        generate_video(prompt, port)
         
-    # 5. Put Wan back to sleep
+    # Note: In a production script, you should poll ComfyUI /history here to ensure 
+    # all generation jobs are completely finished before moving to Step 4.
+    print("\n[NOTE] Assuming jobs are finished (You should add polling logic here!)")
+    time.sleep(5) 
+        
+    # 4. Unload ComfyUI models from VRAM
     print("\n--- Transitioning GPU back to LLM (Qwen) ---")
-    set_sleep_state(WAN_SERVER_URL, sleep=True)
+    free_comfyui_vram()
     
-    # 6. Wake up Qwen so Opencode can continue thinking
-    set_sleep_state(QWEN_SERVER_URL, sleep=False)
+    # 5. Wake up Qwen (Ollama) so Opencode can continue thinking
+    set_ollama_sleep_state(sleep=False)
     
     print("\nPipeline completed successfully!")
 
