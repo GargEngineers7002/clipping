@@ -1,55 +1,73 @@
 # Short-Form Video Automation Agent Specification
 
 ## 1. Goal
-
-When given a topic or campaign URL (e.g., ContentRewards/Whop webinar), autonomously:
-
-1. Research viral angles or find top-ranking video sources.
-2. Clip high-retention segments (or generate AI video clips via ComfyUI).
-3. Assemble 9:16 vertical videos with burned captions and explicit visual CTAs.
-4. Auto-publish across YouTube Shorts, TikTok, and Instagram with customized titles, tags, and affiliate links in descriptions.
+When given a topic, campaign URL, or raw video file, your goal is to autonomously:
+1. **Research & Plan:** Use web search to find viral angles, hooks, and trending discussions.
+2. **Download & Transcribe:** Download videos using `yt-dlp`, extract transcripts using `fw_client.py` for high-quality audio analysis, and extract visual frames using `ffmpeg-analyse-video` to deeply understand the content.
+3. **Generate Media (ComfyUI via Orchestrator):** Write task payloads to `video_prompts.json` and execute `video_generation_manager.py` to seamlessly orchestrate the generation of high-quality AI video/images using ComfyUI.
+4. **Edit & Assemble:** Use the `ffmpeg-video-editor` and `ffmpeg` skills to assemble, cut, trim, resize to 9:16 vertical format, burn in subtitles, and add CTA overlays.
+5. **Publish:** Auto-publish across YouTube Shorts, TikTok, and Instagram using `composio` MCP with customized titles, tags, and affiliate links.
 
 ---
 
-## 2. Execution Pipeline
+## 2. Skills and Tooling
 
-### Step 1: Deep Research & Script Generation
+You must heavily rely on your available Skills (view their `SKILL.md` for specific instructions):
+- **`yt-dlp`**: Download any source videos from YouTube, Twitter, TikTok, etc.
+- **`ffmpeg-analyse-video`**: Extract frames from video files in a context-efficient manner for visual analysis. Use this to understand what is happening on-screen.
+- **`ffmpeg`** and **`ffmpeg-video-editor`**: For absolute, immense control over cutting, resizing (9:16), compressing, muxing audio, and burning subtitles (`.ass`).
+- **`fw_client.py`**: Execute this script to generate incredibly high-quality transcripts of your downloaded videos. Use the transcripts to identify high-retention 30-60 second hooks.
 
-- **LLM Endpoint:** Ollama (`http://127.0.0.1:11434/api/generate`) with model `qwen3-coder:30b`.
-- **Payload Requirement:** Always include `"keep_alive": 0` in all Ollama API calls so VRAM is cleared immediately for video tasks.
-- **Search Tool:** Exa Web Search to find:
-  - Top trending hooks, discussions, and keywords around the query.
-  - Relevant YouTube URLs if creating clipped content.
+---
 
-### Step 2: Content Sourcing & Clipping (If source videos exist)
+## 3. The Media Generation Pipeline (ComfyUI Orchestrator)
 
-- **Download:** Execute `yt-dlp -f "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]" -o "raw_input.mp4" "<URL>"`.
-- **Transcribe:** Run `whisperx` or `faster-whisper` CLI to generate word-level timestamped `.json`.
-- **Hook Extraction:** Pass transcripts to Qwen to locate optimal 30–60 second start and end timestamps.
-- **Cut Clip:**
-  ```bash
-  ffmpeg -ss <START_TIME> -to <END_TIME> -i raw_input.mp4 -c:v libx264 -c:a aac clipped_raw.mp4
-  ```
+We no longer manually manage vLLM. You are running on an Ollama model that will intelligently sleep when `video_generation_manager.py` is executed, allowing two local ComfyUI servers to generate media.
 
-### Step 3: ComfyUI AI Generation (If generating pure AI clips)
+### Step A: Define the Workflow Tasks
+Write a JSON array of tasks to `/home/garg7002/clipping/video_prompts.json`. Each task must specify a `workflow` from the `workflows/` directory and an `inputs` dictionary mapping the variables you want to patch.
 
-- **Endpoint:** `http://127.0.0.1:8188/prompt`
-- **Workflow:** Send JSON workflow payload utilizing the Wan 2.1 diffusion model.
-- **Polling:** Poll `/history/<prompt_id>` until the generated `.mp4` is saved in `ComfyUI/output`.
+**Available Workflows (`workflows/`):**
+- `LTX-2.5_T2V_I2V_Two_Stage_Distilled.json`: Best overall quality Text-to-Video or Image-to-Video (Inputs: `prompt`, `image` (optional)).
+- `LTX-2.5_T2V_I2V_Single_Stage_Distilled.json`: Fast previews/lower VRAM (Inputs: `prompt`, `image`).
+- `LTX-2.5_A2V_Two_Stage_Distilled.json`: Audio-driven video. Follows an existing audio track. (Inputs: `prompt`, `audio`, `image` (optional)).
+- `LTX-2.5_ICLoRA_Union_Control_Distilled.json`: Video-to-Video following motion/structure. (Inputs: `prompt`, `video`).
+- `LTX-2.5_ICLoRA_Ingredients_Single_Stage_Distilled.json`: Multi-Subject Reference consistency. (Inputs: `prompt`, `image` (reference sheet)).
+- *Additional workflows like Outpaint, Inpaint, Motion Track are also available.*
 
-### Step 4: Video Formatting & Call to Action (FFmpeg)
+**Example `video_prompts.json` structure:**
+```json
+[
+  {
+    "workflow": "LTX-2.5_T2V_I2V_Two_Stage_Distilled.json",
+    "inputs": {
+      "prompt": "A majestic lion roaring in the neon savanna",
+      "negative": "blurry, low resolution",
+      "seed": 42
+    }
+  },
+  {
+    "workflow": "LTX-2.5_A2V_Two_Stage_Distilled.json",
+    "inputs": {
+      "prompt": "A futuristic cyborg speaking to the camera",
+      "audio": "/home/garg7002/clipping/audios/voiceover.mp3"
+    }
+  }
+]
+```
+*(Note: If you provide an absolute path to a local media file in `inputs`, the orchestrator will automatically upload it to ComfyUI for you.)*
 
-- **Format:** Vertical 1080x1920 (9:16 ratio).
-- **CTA Overlay:** Overlay on-screen text banner (e.g., "Link in Description!") during the final 5–10 seconds.
-- **Subtitles:** Generate `.ass` subtitles with highlighted text and burn them into the output:
-  ```bash
-  ffmpeg -y -i clipped_raw.mp4 -vf "crop=ih*(9/16):ih,ass=subtitles.ass,drawtext=text='Click Link in Description':fontcolor=yellow:fontsize=48:box=1:boxcolor=black@0.5:x=(w-text_w)/2:y=h-200:enable='gte(t,20)'" -c:a copy final_output_1.mp4
-  ```
+### Step B: Execute the Orchestrator
+Once `video_prompts.json` is written, simply run:
+```bash
+clipping_env/bin/python video_generation_manager.py
+```
+The script will put your Ollama instance to sleep, queue the workflows to the ComfyUI servers, download the resulting videos to `/home/garg7002/clipping/ai_generated_videos/`, and wake you back up when finished.
 
-### Step 5: Metadata & Multi-Platform Upload
+---
 
-- **Metadata Generation:** Generate engaging short-form titles, relevant hashtags, and description text including the target referral/campaign link.
-- **Upload:** Execute tool calls through MCP to upload:
-  - YouTube Shorts: `upload_youtube_short(file="final_output_1.mp4", title=..., description=...)`
-  - TikTok: `upload_tiktok_video(file="final_output_1.mp4", caption=...)`
-  - Instagram Reels: `upload_instagram_reel(file="final_output_1.mp4", caption=...)`
+## 4. Final Assembly & Upload
+
+1. **Assemble**: Use `ffmpeg` to stitch the generated clips, original hooks, and audio into a final 9:16 vertical video. Burn captions and an explicit CTA (e.g., "Link in Bio!").
+2. **Metadata**: Generate viral titles, descriptions, and hashtags.
+3. **Upload**: Use the `composio` MCP tools to dispatch the final video to social platforms.
