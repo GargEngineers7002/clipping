@@ -3,29 +3,22 @@ import time
 import requests
 import json
 import uuid
+import sys
 
 # Configuration
 OLLAMA_SERVER_URL = "http://100.72.216.28:11434"
 OLLAMA_MODEL_NAME = "qwen3.8:27b"
-COMFYUI_PORTS = [58328, 58329]
+COMFYUI_SERVERS = ["http://127.0.0.1:58328", "http://127.0.0.1:58329"]
 
 OUTPUT_DIR = "/home/garg7002/clipping/ai_generated_videos"
 PROMPTS_FILE = "/home/garg7002/clipping/video_prompts.json"
+WORKFLOWS_DIR = "/home/garg7002/clipping/workflows"
 
 def set_ollama_sleep_state(sleep: bool):
-    """
-    Sends a request to the Ollama server to either wake it up or put it to sleep.
-    sleep=True sets keep_alive to 0 to instantly unload from VRAM.
-    sleep=False sets keep_alive to -1 to load it into VRAM.
-    """
     endpoint = f"{OLLAMA_SERVER_URL}/api/generate"
-    payload = {
-        "model": OLLAMA_MODEL_NAME,
-        "keep_alive": 0 if sleep else -1
-    }
+    payload = {"model": OLLAMA_MODEL_NAME, "keep_alive": 0 if sleep else -1}
     action = "Sleep (Unload VRAM)" if sleep else "Wake up (Preload VRAM)"
-        
-    print(f"[Ollama] Sending {action} request...")
+    print(f"\n[Ollama] Sending {action} request...")
     try:
         response = requests.post(endpoint, json=payload, timeout=30)
         response.raise_for_status()
@@ -35,84 +28,155 @@ def set_ollama_sleep_state(sleep: bool):
         print(f"[Ollama] ERROR: Failed to {action.lower()} server: {e}")
 
 def free_comfyui_vram():
-    """
-    Sends requests to both ComfyUI servers to unload models and free memory.
-    """
     print("\n[ComfyUI] Freeing VRAM on both ComfyUI servers...")
     payload = {"unload_models": True, "free_memory": True}
-    for port in COMFYUI_PORTS:
-        endpoint = f"http://127.0.0.1:{port}/free"
+    for server in COMFYUI_SERVERS:
+        endpoint = f"{server}/free"
         try:
             response = requests.post(endpoint, json=payload, timeout=15)
             response.raise_for_status()
-            print(f"[ComfyUI Port {port}] SUCCESS: VRAM freed.")
+            print(f"[{server}] SUCCESS: VRAM freed.")
         except requests.exceptions.RequestException as e:
-            print(f"[ComfyUI Port {port}] ERROR: Failed to free VRAM: {e}")
+            print(f"[{server}] ERROR: Failed to free VRAM: {e}")
 
-def generate_video(prompt, port):
-    """
-    Sends the prompt to a ComfyUI server.
-    NOTE: You must replace `workflow` with your actual exported ComfyUI Wan 2.1 API JSON!
-    """
-    print(f"\n>> Queuing video for prompt: '{prompt}' on ComfyUI port {port}")
-    
-    endpoint = f"http://127.0.0.1:{port}/prompt" 
-    
-    # This is a placeholder for your actual ComfyUI workflow API JSON.
-    # You will need to parse your exported JSON and inject the `prompt` variable into the correct node.
-    workflow = {
-        "prompt": {} 
-    }
-    
-    try:
-        response = requests.post(endpoint, json=workflow, timeout=30)
-        response.raise_for_status()
-        data = response.json()
-        print(f">> Successfully queued prompt! Prompt ID: {data.get('prompt_id')}")
-        # Note: To actually wait for it to finish, you would need to poll http://127.0.0.1:{port}/history/{prompt_id}
+def upload_to_comfyui(server_url, filepath):
+    with open(filepath, 'rb') as f:
+        files = {'image': f} # ComfyUI accepts all media under 'image'
+        data = {'type': 'input', 'overwrite': 'true'}
+        r = requests.post(f"{server_url}/upload/image", files=files, data=data)
+        r.raise_for_status()
+        return r.json()['name']
+
+def patch_workflow(wf, inputs):
+    for node_id, node in wf.items():
+        c_type = node.get("class_type", "")
+        title = node.get("_meta", {}).get("title", "").lower()
+        
+        # Patch Prompts
+        if "prompt" in title or "positive" in title:
+            if "positive" in title or "prompt (positive)" in title:
+                if "prompt" in inputs:
+                    if "text" in node["inputs"]: node["inputs"]["text"] = inputs["prompt"]
+                    if "value" in node["inputs"]: node["inputs"]["value"] = inputs["prompt"]
+            elif "negative" in title or "prompt (negative)" in title:
+                if "negative" in inputs:
+                    if "text" in node["inputs"]: node["inputs"]["text"] = inputs["negative"]
+                    if "value" in node["inputs"]: node["inputs"]["value"] = inputs["negative"]
+                    
+        # Patch Media Files
+        if c_type == "LoadImage" and "image" in inputs:
+            node["inputs"]["image"] = inputs["image"]
+        if c_type == "LoadAudio" and "audio" in inputs:
+            node["inputs"]["audio"] = inputs["audio"]
+        if c_type == "VHS_LoadVideo" and "video" in inputs:
+            node["inputs"]["video"] = inputs["video"]
             
-    except requests.exceptions.RequestException as e:
-        print(f">> ERROR: Video generation failed for prompt '{prompt}': {e}")
+        # Patch Seed
+        if "seed" in inputs:
+            if "noise_seed" in node["inputs"]: node["inputs"]["noise_seed"] = inputs["seed"]
+            if "seed" in node["inputs"]: node["inputs"]["seed"] = inputs["seed"]
+            
+        # Patch Duration
+        if "duration" in inputs and "duration" in title:
+            if "value" in node["inputs"]: node["inputs"]["value"] = inputs["duration"]
+
+def download_comfyui_outputs(server_url, history_result, task_id, workflow_name=""):
+    saved_files = []
+    # Output can be in multiple nodes
+    for node_id, node_output in history_result.get("outputs", {}).items():
+        if "images" in node_output:
+            for item in node_output["images"]:
+                fname = item["filename"]
+                url = f"{server_url}/view?filename={fname}&type=output"
+                r = requests.get(url)
+                if r.status_code == 200:
+                    ext = os.path.splitext(fname)[1]
+                    out_dir = OUTPUT_DIR
+                    if workflow_name.startswith("image_") or ext.lower() in ['.png', '.jpg', '.jpeg']:
+                        out_dir = "/home/garg7002/clipping/ai_generated_images"
+                        os.makedirs(out_dir, exist_ok=True)
+                        
+                    out_path = os.path.join(out_dir, f"{task_id}_{node_id}{ext}")
+                    with open(out_path, "wb") as f:
+                        f.write(r.content)
+                    saved_files.append(out_path)
+                    print(f"  -> Saved output to: {out_path}")
+    return saved_files
+
+def generate_video(task, server_url):
+    print(f"\n>> Processing task using workflow: {task.get('workflow')}")
+    wf_path = os.path.join(WORKFLOWS_DIR, task['workflow'])
+    if not os.path.exists(wf_path):
+        print(f"ERROR: Workflow {wf_path} not found!")
+        return
+        
+    with open(wf_path) as f:
+        wf = json.load(f)
+        
+    inputs = dict(task.get("inputs", {}))
+    
+    # Pre-upload any local files to ComfyUI
+    for key, value in inputs.items():
+        if isinstance(value, str) and os.path.isabs(value) and os.path.isfile(value):
+            print(f"   -> Uploading {value} to ComfyUI...")
+            inputs[key] = upload_to_comfyui(server_url, value)
+            
+    patch_workflow(wf, inputs)
+    
+    # Queue workflow
+    client_id = str(uuid.uuid4())
+    payload = {"prompt": wf, "client_id": client_id}
+    r = requests.post(f"{server_url}/prompt", json=payload, timeout=30)
+    r.raise_for_status()
+    prompt_id = r.json()["prompt_id"]
+    print(f"   -> Queued workflow! Prompt ID: {prompt_id}")
+    
+    # Wait for result
+    start = time.time()
+    timeout = 1800 # 30 minutes max
+    while time.time() - start < timeout:
+        r = requests.get(f"{server_url}/history/{prompt_id}")
+        if r.status_code == 200:
+            hist = r.json()
+            if prompt_id in hist:
+                print(f"   -> Generation complete!")
+                download_comfyui_outputs(server_url, hist[prompt_id], client_id[:8], task.get('workflow', ''))
+                return
+        time.sleep(5)
+    print(f"   -> ERROR: Generation timed out!")
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
-    # 1. Read prompts stored by Opencode
     if not os.path.exists(PROMPTS_FILE):
-        print(f"Waiting for prompts... {PROMPTS_FILE} does not exist.")
-        with open(PROMPTS_FILE, "w") as f:
-            json.dump(["A majestic lion roaring in the savanna", "A futuristic car driving through neon city"], f)
+        print(f"No prompts file found at {PROMPTS_FILE}")
+        sys.exit(0)
             
     with open(PROMPTS_FILE, "r") as f:
-        prompts = json.load(f)
+        tasks = json.load(f)
         
-    if not prompts:
-        print("No prompts found in the file.")
-        return
+    if not tasks:
+        print("No tasks found in the file.")
+        sys.exit(0)
         
-    print(f"Found {len(prompts)} prompts. Initiating pipeline...")
+    print(f"Found {len(tasks)} tasks. Initiating pipeline...")
     
-    # 2. Free up VRAM by putting Ollama (Qwen) to sleep
-    print("\n--- Transitioning GPU for Video Generation ---")
     set_ollama_sleep_state(sleep=True)
     
-    # 3. Process all prompts, alternating between ComfyUI servers for load balancing
-    print("\n--- Queuing Video Generations to ComfyUI ---")
-    for idx, prompt in enumerate(prompts):
-        port = COMFYUI_PORTS[idx % len(COMFYUI_PORTS)]
-        generate_video(prompt, port)
-        
-    # Note: In a production script, you should poll ComfyUI /history here to ensure 
-    # all generation jobs are completely finished before moving to Step 4.
-    print("\n[NOTE] Assuming jobs are finished (You should add polling logic here!)")
-    time.sleep(5) 
-        
-    # 4. Unload ComfyUI models from VRAM
-    print("\n--- Transitioning GPU back to LLM (Qwen) ---")
+    print("\n--- Generating Media via ComfyUI ---")
+    for idx, task in enumerate(tasks):
+        server = COMFYUI_SERVERS[idx % len(COMFYUI_SERVERS)]
+        try:
+            generate_video(task, server)
+        except Exception as e:
+            print(f"ERROR executing task: {e}")
+            
     free_comfyui_vram()
-    
-    # 5. Wake up Qwen (Ollama) so Opencode can continue thinking
     set_ollama_sleep_state(sleep=False)
+    
+    # Clear tasks file after successful run
+    with open(PROMPTS_FILE, "w") as f:
+        json.dump([], f)
     
     print("\nPipeline completed successfully!")
 

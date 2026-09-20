@@ -50,28 +50,28 @@ def process_video(video_path):
 def main():
     os.makedirs(TRANSCRIPTS_DIR, exist_ok=True)
     
-    valid_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.webm')
+    valid_extensions = ('.mp4', '.mkv', '.avi', '.mov', '.webm', '.mp3', '.wav', '.m4a', '.flac')
     
-    if not os.path.exists(VIDEOS_DIR):
-        print(f"Directory {VIDEOS_DIR} does not exist.")
+    media_files = []
+    
+    for directory in [VIDEOS_DIR, "/home/garg7002/clipping/audios"]:
+        if os.path.exists(directory):
+            media_files.extend([
+                os.path.join(directory, f) 
+                for f in os.listdir(directory) 
+                if f.lower().endswith(valid_extensions)
+            ])
+    
+    if not media_files:
+        print(f"No valid media files found in {VIDEOS_DIR} or audios dir.")
         return
         
-    video_files = [
-        os.path.join(VIDEOS_DIR, f) 
-        for f in os.listdir(VIDEOS_DIR) 
-        if f.lower().endswith(valid_extensions)
-    ]
-    
-    if not video_files:
-        print(f"No valid video files found in {VIDEOS_DIR}")
-        return
-        
-    print(f"Found {len(video_files)} videos. Starting multi-threaded processing...")
+    print(f"Found {len(media_files)} files. Starting multi-threaded processing...")
     
     # ThreadPoolExecutor is perfect for network-bound tasks like this in Python
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_UPLOADS) as executor:
         # Submit all tasks to the executor
-        futures = {executor.submit(process_video, vf): vf for vf in video_files}
+        futures = {executor.submit(process_video, vf): vf for vf in media_files}
         
         # Process results as they complete
         for future in as_completed(futures):
