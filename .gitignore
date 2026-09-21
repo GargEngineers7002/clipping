@@ -216,3 +216,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Media folders
+videos/*
+!videos/.gitkeep
+audios/*
+!audios/.gitkeep
+transcripts/*
+!transcripts/.gitkeep
+ai_generated_videos/*
+!ai_generated_videos/.gitkeep
+ai_generated_images/*
+!ai_generated_images/.gitkeep
+workflows/*
+!workflows/*.json
+
+# Scripts that shouldn't be tracked (if any, but we want to track them usually)
+clipping_env/
+video_prompts.json
+STATE_PLAN.md
