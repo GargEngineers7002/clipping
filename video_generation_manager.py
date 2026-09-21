@@ -47,7 +47,12 @@ def upload_to_comfyui(server_url, filepath):
         r.raise_for_status()
         return r.json()['name']
 
+import random
+
 def patch_workflow(wf, inputs):
+    # If the agent didn't provide a seed, auto-generate a random one to ensure true randomness
+    current_seed = inputs.get("seed", random.randint(1, 999999999999999))
+    
     for node_id, node in wf.items():
         c_type = node.get("class_type", "")
         title = node.get("_meta", {}).get("title", "").lower()
@@ -71,10 +76,9 @@ def patch_workflow(wf, inputs):
         if c_type == "VHS_LoadVideo" and "video" in inputs:
             node["inputs"]["video"] = inputs["video"]
             
-        # Patch Seed
-        if "seed" in inputs:
-            if "noise_seed" in node["inputs"]: node["inputs"]["noise_seed"] = inputs["seed"]
-            if "seed" in node["inputs"]: node["inputs"]["seed"] = inputs["seed"]
+        # Patch Seed (Always patched for randomness, locked if agent specified)
+        if "noise_seed" in node["inputs"]: node["inputs"]["noise_seed"] = current_seed
+        if "seed" in node["inputs"]: node["inputs"]["seed"] = current_seed
             
         # Patch Duration
         if "duration" in inputs and "duration" in title:
