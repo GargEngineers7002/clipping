@@ -1,29 +1,10 @@
-Installing the models:
-
-source venv/bin/activate
-
-# 1. Download Wan 2.1 14B Text-to-Video Diffusion Model (FP8 / Quantized)
-huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/diffusion_models/wan2.1_t2v_14B_fp8_e4m3fn.safetensors --local-dir models/diffusion_models --local-dir-use-symlinks False
-
-# 2. Download Text Encoders (T5-XXL)
-huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors --local-dir models/text_encoders --local-dir-use-symlinks False
-
-# 3. Download the Wan 2.1 Video VAE
-huggingface-cli download Comfy-Org/Wan_2.1_ComfyUI_repackaged split_files/vae/wan_2.1_vae.safetensors --local-dir models/vae --local-dir-use-symlinks False
-
-
 Tools Installed in the opencode machine:
 
 yt-dlp, and ffmpeg, and composio cli
 
 faster-whisper Installation:
 
-uv venv clipping-env --python 3.12.12
-
-source clipping-env/bin/activate
-
-uv pip install -r requirements.txt
-
+just go in fw-server directory and follow the installation on another server.
 
 OPENCODE_EXPERIMENTAL=true opencode --agent clipping_agent
 
@@ -35,7 +16,8 @@ opencode.json:
   "autoupdate": false,
   "lsp": true,
   "permission": {
-    "websearch": "allow"
+    "websearch": "allow",
+    "webfetch": "allow"
   },
   "provider": {
     "ollama": {
@@ -45,8 +27,41 @@ opencode.json:
         "baseURL": "http://100.72.216.28:11434/v1"
       },
       "models": {
-        "qwen3-coder:30b": {
-          "name": "qwen3-coder:30b"
+        "qwen3.8:27b-64k": {
+          "name": "qwen3.8:27b-64k",
+          "modalities": {
+            "input": ["text", "image", "video"],
+            "output": ["text"]
+          }
+        }
+      }
+    },
+    "ollama_windows": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Remote",
+      "options": {
+        "baseURL": "http://100.98.18.46:11434/v1"
+      },
+      "models": {
+        "qwen-max:latest": {
+          "name": "qwen3.8:27b"
+        }
+      }
+    },
+    "vllm": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "vLLM Remote",
+      "options": {
+        "baseURL": "http://100.72.216.28:58328/v1",
+        "apiKey": "EMPTY"
+      },
+      "models": {
+        "RedHatAI/Qwen3.8-27B-INT4": {
+          "name": "Qwen 27B INT4",
+          "limit": {
+            "context": 16384,
+            "output": 3500
+          }
         }
       }
     }
@@ -62,21 +77,29 @@ opencode.json:
     },
     "dart-mcp-server": {
       "type": "local",
-      "command": [
-        "dart",
-        "mcp-server"
-      ],
+      "command": ["dart", "mcp-server"],
       "enabled": false,
       "environment": {}
     }
+    // "yt-dlp": {
+    //   "type": "local",
+    //   "command": [
+    //     "npx",
+    //     "-y",
+    //     "@kevinwatt/yt-dlp-mcp@latest"
+    //   ],
+    //   "enabled": true,
+    // },
   },
   "tools": {
     "composio*": false
+    // "yt-dlp*": false
   },
   "agent": {
     "clipping_agent": {
       "tools": {
         "composio*": true
+        // "yt-dlp*": true
       }
     },
     "linkedin_agent": {
@@ -86,4 +109,3 @@ opencode.json:
     }
   }
 }
-

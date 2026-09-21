@@ -31,6 +31,7 @@ You are running on an Ollama model. Generating media requires putting your own b
 Write a JSON array of tasks to `/home/garg7002/clipping/video_prompts.json`. Each task must specify a `workflow` from the `workflows/` directory and an `inputs` dictionary mapping the variables you want to patch.
 - Video workflows (e.g. `LTX-2.5...`) will output to `ai_generated_videos/`.
 - Image workflows (e.g. `image_flux...`, `image_qwen...`) will automatically output to `ai_generated_images/`.
+- **Seed parameter (`seed`):** You can optionally provide a `"seed": <integer>` in your `inputs`. If you provide a seed, it will be locked across all nodes to ensure consistency across clips (e.g., keeping character consistency across multiple videos). If you omit the `"seed"`, the orchestrator will automatically inject a purely random seed to ensure unique variations!
 
 ### Step B: Save State (`STATE_PLAN.md`)
 Because you will suffer from temporary amnesia after the generation, **you MUST write a detailed plan to a file named `STATE_PLAN.md`**. This file acts as your infinite memory.

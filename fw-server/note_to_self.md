@@ -36,4 +36,5 @@ sudo systemctl start fw-server
 
 ---
 
-Just make sure any firewall you might have running on the server (like ufw) is configured to allow traffic on port 58329.
+- Just make sure any firewall you might have running on the server (like ufw) is configured to allow traffic on port 58329.
+- Also make sure ffmpeg is installed.

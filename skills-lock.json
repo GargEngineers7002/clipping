@@ -7,6 +7,18 @@
       "skillPath": ".claude/skills/ffmpeg/SKILL.md",
       "computedHash": "51fa05bc18bb2691e622aefd1d8ec6d4d96a9e9c44cdf599003c9d6003d11a07"
     },
+    "ffmpeg-analyse-video": {
+      "source": "fabriqaai/ffmpeg-analyse-video-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "333beca6cb64c984990076e05dd9d040cbef262c3f1232ecf17355d06ccf75ef"
+    },
+    "ffmpeg-video-editor": {
+      "source": "sundial-org/awesome-openclaw-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ffmpeg-video-editor/SKILL.md",
+      "computedHash": "2a78a066a555c78bf0451b3b5ff34a8dff901887301072305af8208d394578c5"
+    },
     "yt-dlp": {
       "source": "lwmxiaobei/yt-dlp-skill",
       "sourceType": "github",
