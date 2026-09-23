@@ -1,4 +1,28 @@
 import os
+import ctypes
+import glob
+
+# --- NVIDIA CUBLAS/CUDNN HACK FOR CTRANSLATE2 ---
+# CTranslate2 requires libcublas.so.12 and libcudnn.so.8/9 to be in LD_LIBRARY_PATH.
+# Since systemd strips env vars, we dynamically load them into the global process space!
+try:
+    import nvidia.cublas.lib
+    import nvidia.cudnn.lib
+    cublas_dir = os.path.dirname(nvidia.cublas.lib.__file__)
+    cudnn_dir = os.path.dirname(nvidia.cudnn.lib.__file__)
+    
+    for lib in glob.glob(os.path.join(cublas_dir, "libcublas.so.*")):
+        ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
+    for lib in glob.glob(os.path.join(cudnn_dir, "libcudnn.so.*")):
+        ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
+    print("Successfully pre-loaded NVIDIA cuBLAS and cuDNN libraries!")
+except ImportError:
+    print("nvidia-cublas-cu12 or nvidia-cudnn-cu12 not installed via pip. Skipping pre-load hack.")
+except Exception as e:
+    print(f"Failed to pre-load NVIDIA libraries: {e}")
+# ------------------------------------------------
+
+import os
 import traceback
 import tempfile
 import time
