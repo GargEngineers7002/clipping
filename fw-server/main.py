@@ -1,4 +1,5 @@
 import os
+import traceback
 import tempfile
 import time
 import asyncio
@@ -97,6 +98,7 @@ async def transcribe_video(file: UploadFile = File(...)):
         
     except Exception as e:
         print(f"Error during transcription: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Crucial cleanup: Decrement active requests and start the 30s timer
