@@ -83,6 +83,12 @@ def patch_workflow(wf, inputs):
         # Patch Duration
         if "duration" in inputs and "duration" in title:
             if "value" in node["inputs"]: node["inputs"]["value"] = inputs["duration"]
+            
+        # Patch Resolution
+        if "width" in inputs and "width" in node["inputs"]:
+            node["inputs"]["width"] = inputs["width"]
+        if "height" in inputs and "height" in node["inputs"]:
+            node["inputs"]["height"] = inputs["height"]
 
 def download_comfyui_outputs(server_url, history_result, task_id, workflow_name=""):
     saved_files = []
