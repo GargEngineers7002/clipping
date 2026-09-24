@@ -33,6 +33,30 @@ Write a JSON array of tasks to `/home/garg7002/clipping/video_prompts.json`. Eac
 - Image workflows (e.g. `image_flux...`, `image_qwen...`) will automatically output to `ai_generated_images/`.
 - **Seed parameter (`seed`):** You can optionally provide a `"seed": <integer>` in your `inputs`. If you provide a seed, it will be locked across all nodes to ensure consistency across clips (e.g., keeping character consistency across multiple videos). If you omit the `"seed"`, the orchestrator will automatically inject a purely random seed to ensure unique variations!
 
+**CRITICAL RULE: DO NOT use `cat` or `read` on the `.json` files in the `workflows/` directory! They are raw ComfyUI node graphs containing thousands of lines and will instantly bloat your context window and crash you. Rely strictly on the mapping below.**
+
+**Available Workflows & Patchable Inputs:**
+- `LTX-2.5_T2V_I2V_Two_Stage_Distilled.json`: Text-to-Video / Image-to-Video (Inputs: `prompt`, `negative`, `image` (optional), `duration`, `seed`).
+- `LTX-2.5_A2V_Two_Stage_Distilled.json`: Audio-driven video. (Inputs: `prompt`, `negative`, `audio` (absolute path), `image` (optional), `duration`, `seed`).
+- `LTX-2.5_ICLoRA_Union_Control_Distilled.json`: Video-to-Video. (Inputs: `prompt`, `negative`, `video` (absolute path), `seed`).
+- `LTX-2.5_ICLoRA_Ingredients_Single_Stage_Distilled.json`: Character Reference. (Inputs: `prompt`, `negative`, `image` (reference sheet), `seed`).
+- `image_flux2_text_to_image_9b.json`: Text-to-Image. (Inputs: `prompt`, `negative`, `seed`).
+- `image_qwen_image_edit_2509.json`: Image-to-Image / Edit. (Inputs: `prompt`, `image`, `seed`).
+
+**Example `video_prompts.json` structure:**
+```json
+[
+  {
+    "workflow": "LTX-2.5_A2V_Two_Stage_Distilled.json",
+    "inputs": {
+      "prompt": "A futuristic cyborg speaking to the camera",
+      "audio": "/home/garg7002/clipping/audios/voiceover.mp3",
+      "seed": 42
+    }
+  }
+]
+```
+
 ### Step B: Save State (`STATE_PLAN.md`)
 Because you will suffer from temporary amnesia after the generation, **you MUST write a detailed plan to a file named `STATE_PLAN.md`**. This file acts as your infinite memory.
 It must include:
