@@ -56,17 +56,18 @@ def main():
     
     for directory in [VIDEOS_DIR, "/home/garg7002/clipping/audios"]:
         if os.path.exists(directory):
-            media_files.extend([
-                os.path.join(directory, f) 
-                for f in os.listdir(directory) 
-                if f.lower().endswith(valid_extensions)
-            ])
+            for f in os.listdir(directory):
+                if f.lower().endswith(valid_extensions):
+                    base_name, _ = os.path.splitext(f)
+                    transcript_path = os.path.join(TRANSCRIPTS_DIR, f"{base_name}.json")
+                    if not os.path.exists(transcript_path):
+                        media_files.append(os.path.join(directory, f))
     
     if not media_files:
-        print(f"No valid media files found in {VIDEOS_DIR} or audios dir.")
+        print("All media files have already been transcribed. Nothing to do!")
         return
         
-    print(f"Found {len(media_files)} files. Starting multi-threaded processing...")
+    print(f"Found {len(media_files)} new files to transcribe. Starting multi-threaded processing...")
     
     # ThreadPoolExecutor is perfect for network-bound tasks like this in Python
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_UPLOADS) as executor:
