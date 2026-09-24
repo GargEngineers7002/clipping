@@ -43,6 +43,14 @@ Write a JSON array of tasks to `/home/garg7002/clipping/video_prompts.json`. Eac
 - `image_flux2_text_to_image_9b.json`: Text-to-Image. (Inputs: `prompt`, `negative`, `seed`, `width`, `height`).
 - `image_qwen_image_edit_2509.json`: Image-to-Image / Edit. (Inputs: `prompt`, `image`, `seed`, `width`, `height`).
 
+
+**Safe Resolutions (VRAM Constraints):**
+Do not use 1080p natively in the generation step as it will crash the GPU. Use these safe base resolutions (which are multiples of 32):
+- **16:9 (Landscape/Long-form):** `"width": 960, "height": 544` OR `"width": 864, "height": 480`
+- **9:16 (Vertical/Shorts):** `"width": 544, "height": 960` OR `"width": 480, "height": 864`
+- **3:2 / 2:3 (Standard):** `"width": 768, "height": 512` OR `"width": 512, "height": 768`
+*Strategy:* If the user asks for 1080p, generate at a safe base resolution above, and later use `ffmpeg` to upscale/pad the final assembled video to 1080p before uploading.
+
 **Example `video_prompts.json` structure:**
 ```json
 [
