@@ -1,74 +1,49 @@
 import os
-import ctypes
-import glob
-
-# --- NVIDIA CUBLAS/CUDNN HACK FOR CTRANSLATE2 ---
-# CTranslate2 requires libcublas.so.12 and libcudnn.so.8/9 to be in LD_LIBRARY_PATH.
-# Since systemd strips env vars, we dynamically load them into the global process space!
-try:
-    import nvidia.cublas.lib
-    import nvidia.cudnn.lib
-    cublas_dir = os.path.dirname(nvidia.cublas.lib.__file__)
-    cudnn_dir = os.path.dirname(nvidia.cudnn.lib.__file__)
-    
-    for lib in glob.glob(os.path.join(cublas_dir, "libcublas.so.*")):
-        ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
-    for lib in glob.glob(os.path.join(cudnn_dir, "libcudnn.so.*")):
-        ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
-    print("Successfully pre-loaded NVIDIA cuBLAS and cuDNN libraries!")
-except ImportError:
-    print("nvidia-cublas-cu12 or nvidia-cudnn-cu12 not installed via pip. Skipping pre-load hack.")
-except Exception as e:
-    print(f"Failed to pre-load NVIDIA libraries: {e}")
-# ------------------------------------------------
-
-import os
-import traceback
 import tempfile
-import time
 import asyncio
-import gc
-from contextlib import asynccontextmanager
+import multiprocessing as mp
+from concurrent.futures import ProcessPoolExecutor
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-from faster_whisper import WhisperModel
+import traceback
 
-# Global state for VRAM management
-model_instance = None
-model_lock = asyncio.Lock()
-last_active_time = time.time()
-active_requests = 0
+# Restrict to a maximum of 2 concurrent GPU transcriptions (4.3 GB * 2 = 8.6 GB VRAM)
+gpu_semaphore = asyncio.Semaphore(2)
 
-async def unload_model_if_idle():
-    """Background task that checks every 5 seconds if the model has been idle for >30s."""
-    global model_instance
-    while True:
-        await asyncio.sleep(5)
-        async with model_lock:
-            # Only unload if the model exists, there are NO active requests, and 30s have passed
-            if model_instance is not None and active_requests == 0:
-                if (time.time() - last_active_time) > 30:
-                    print("Idle timeout (30s) reached. Unloading model to free VRAM...")
-                    del model_instance
-                    model_instance = None
-                    # Force garbage collection to ensure CTranslate2 releases the VRAM immediately
-                    gc.collect()
-                    print("VRAM successfully freed.")
+def transcribe_worker(temp_path):
+    # Load NVIDIA libraries in the worker process
+    import ctypes
+    import glob
+    try:
+        import nvidia.cublas.lib
+        import nvidia.cudnn.lib
+        cublas_dir = os.path.dirname(nvidia.cublas.lib.__file__)
+        cudnn_dir = os.path.dirname(nvidia.cudnn.lib.__file__)
+        for lib in glob.glob(os.path.join(cublas_dir, "libcublas.so.*")):
+            ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
+        for lib in glob.glob(os.path.join(cudnn_dir, "libcudnn.so.*")):
+            ctypes.CDLL(lib, mode=ctypes.RTLD_GLOBAL)
+    except Exception:
+        pass
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Start the idle checker loop in the background when the server starts
-    checker_task = asyncio.create_task(unload_model_if_idle())
-    yield
-    # Cancel the loop when the server shuts down
-    checker_task.cancel()
+    from faster_whisper import WhisperModel
+    print("Loading Whisper 'large-v3' model into VRAM...")
+    model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+    
+    segments, info = model.transcribe(temp_path, beam_size=5)
+    transcript_text = [{"start": s.start, "end": s.end, "text": s.text} for s in segments]
+    
+    return {
+        "language": info.language,
+        "language_probability": info.language_probability,
+        "duration": info.duration,
+        "segments": transcript_text
+    }
 
-app = FastAPI(title="Faster-Whisper Server", lifespan=lifespan)
+app = FastAPI(title="Faster-Whisper Server")
 
 @app.post("/transcribe")
 async def transcribe_video(file: UploadFile = File(...)):
-    global model_instance, last_active_time, active_requests
-    
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
     
@@ -79,58 +54,25 @@ async def transcribe_video(file: UploadFile = File(...)):
             while chunk := await file.read(8192 * 1024):  # 8MB chunks
                 f.write(chunk)
                 
-        # Safely acquire the lock to check/load the model
-        async with model_lock:
-            if model_instance is None:
-                print("Loading Whisper 'large-v3' model into VRAM...")
-                # We load it in a thread so it doesn't block FastAPI's event loop
-                loop = asyncio.get_running_loop()
-                model_instance = await loop.run_in_executor(
-                    None, 
-                    lambda: WhisperModel("large-v3", device="cuda", compute_type="float16")
-                )
-                print("Model loaded successfully!")
-            
-            # Increment active requests so the idle checker knows we're busy
-            active_requests += 1
-
-        print(f"Transcribing {file.filename}...")
+        print(f"Queueing {file.filename} (Waiting for available GPU slot...)")
         
-        # Define the synchronous transcription function
-        def run_transcription():
-            segments, info = model_instance.transcribe(temp_path, beam_size=5)
-            transcript_text = []
-            for segment in segments:
-                transcript_text.append({
-                    "start": segment.start,
-                    "end": segment.end,
-                    "text": segment.text
-                })
-            return info, transcript_text
-
-        # Run transcription in a background thread to prevent blocking the async event loop
-        loop = asyncio.get_running_loop()
-        info, transcript_text = await loop.run_in_executor(None, run_transcription)
+        # Enforce max 2 concurrent GPU jobs
+        async with gpu_semaphore:
+            print(f"Starting GPU transcription for {file.filename}")
+            loop = asyncio.get_running_loop()
             
-        print(f"Finished transcribing {file.filename}")
-        return JSONResponse(content={
-            "language": info.language,
-            "language_probability": info.language_probability,
-            "duration": info.duration,
-            "segments": transcript_text
-        })
-        
+            # Spawn a fresh process for transcription. When it finishes, the process dies and VRAM drops to 0!
+            with ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn")) as pool:
+                result = await loop.run_in_executor(pool, transcribe_worker, temp_path)
+            
+            print(f"Finished transcribing {file.filename}. Subprocess destroyed, VRAM cleared.")
+            return JSONResponse(content=result)
+            
     except Exception as e:
         print(f"Error during transcription: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        # Crucial cleanup: Decrement active requests and start the 30s timer
-        async with model_lock:
-            if active_requests > 0:
-                active_requests -= 1
-            last_active_time = time.time()
-            
         if 'temp_path' in locals() and os.path.exists(temp_path):
             os.remove(temp_path)
 
