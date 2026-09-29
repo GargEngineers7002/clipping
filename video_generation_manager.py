@@ -6,26 +6,12 @@ import uuid
 import sys
 
 # Configuration
-OLLAMA_SERVER_URL = "http://100.72.216.28:11434"
-OLLAMA_MODEL_NAME = "qwen3.8:27b"
 COMFYUI_SERVERS = ["http://127.0.0.1:58328", "http://127.0.0.1:58329"]
 
 OUTPUT_DIR = "/home/garg7002/clipping/ai_generated_videos"
 PROMPTS_FILE = "/home/garg7002/clipping/video_prompts.json"
 WORKFLOWS_DIR = "/home/garg7002/clipping/workflows"
 
-def set_ollama_sleep_state(sleep: bool):
-    endpoint = f"{OLLAMA_SERVER_URL}/api/generate"
-    payload = {"model": OLLAMA_MODEL_NAME, "keep_alive": 0 if sleep else -1}
-    action = "Sleep (Unload VRAM)" if sleep else "Wake up (Preload VRAM)"
-    print(f"\n[Ollama] Sending {action} request...")
-    try:
-        response = requests.post(endpoint, json=payload, timeout=30)
-        response.raise_for_status()
-        print(f"[Ollama] SUCCESS: Processed {action}.")
-        time.sleep(3)
-    except requests.exceptions.RequestException as e:
-        print(f"[Ollama] ERROR: Failed to {action.lower()} server: {e}")
 
 def free_comfyui_vram():
     print("\n[ComfyUI] Freeing VRAM on both ComfyUI servers...")
@@ -171,7 +157,7 @@ def main():
         
     print(f"Found {len(tasks)} tasks. Initiating pipeline...")
     
-    set_ollama_sleep_state(sleep=True)
+    
     
     print("\n--- Generating Media via ComfyUI ---")
     for idx, task in enumerate(tasks):
@@ -182,9 +168,19 @@ def main():
             print(f"ERROR executing task: {e}")
             
     free_comfyui_vram()
-    set_ollama_sleep_state(sleep=False)
+    
     
     # Clear tasks file after successful run
+
+    # Trigger cleanup on the server
+    cleanup_url = server.replace(":58328", ":8189").replace(":8188", ":8189") + "/cleanup"
+    try:
+        import requests
+        r = requests.post(cleanup_url, timeout=5)
+        print(f"Cleanup triggered: {r.json()}")
+    except Exception as e:
+        print(f"Warning: Failed to trigger cleanup API: {e}")
+
     with open(PROMPTS_FILE, "w") as f:
         json.dump([], f)
     

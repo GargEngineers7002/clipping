@@ -154,9 +154,70 @@ hf download depth-anything/Video-Depth-Anything-Small \
 # Optional larger variants if you want better quality
 # hf download depth-anything/Video-Depth-Anything-Base video_depth_anything_vitb.pth --local-dir models/videodepthanything
 # hf download depth-anything/Video-Depth-Anything-Large video_depth_anything_vitl.pth --local-dir models/videodepthanything
+
+# -------------------------------------------------
+# Qwen text encoder (very commonly used)
+# -------------------------------------------------
+hf download Comfy-Org/Qwen-Image_ComfyUI \
+  split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors \
+  --local-dir models/text_encoders
+
+# -------------------------------------------------
+# Flux text encoders (CLIP-L + T5XXL)
+# -------------------------------------------------
+hf download comfyanonymous/flux_text_encoders \
+  clip_l.safetensors \
+  --local-dir models/clip
+
+hf download comfyanonymous/flux_text_encoders \
+  t5xxl_fp16.safetensors \
+  --local-dir models/clip
+
+# (Optional lower-VRAM T5)
+# hf download comfyanonymous/flux_text_encoders \
+#   t5xxl_fp8_e4m3fn.safetensors \
+#   --local-dir models/clip
+
+# Breeze-TTS-2-comfyui model
+
+cd /home/server/ComfyUI
+mkdir -p models/breezetts2
+
+hf download drbaph/Breeze-TTS-2-comfyui \
+  Breeze-TTS-2-bf16.safetensors \
+  --local-dir models/breezetts2
 ```
 
 (If you also want the Flux / Qwen models that were discussed earlier, add them the same way.)
+
+what was done for the breeze tts 2 model:
+
+```bash
+cd /home/server/ComfyUI/custom_nodes
+
+git -c credential.helper= clone https://github.com/Overburdenjackpot6592/ComfyUI-Breeze-TTS-2.git
+```
+
+after this just paste this into a cli llm and tell it to apply this fix:
+
+### What Was Done
+
+In codec_model.py:32-44, we removed the try: from transformers.utils.generic import check_model_inputs except Exception: block so that the nodepack author's intended fallback shim is used unconditionally:
+
+    def check_model_inputs(*args, **kwargs):
+        def _wrap(fn):
+            return fn
+
+        if args and callable(args[0]) and not kwargs:
+            return args[0]
+        return _wrap
+
+### Verification
+
+Testing node loading via Python verified that all nodes now load cleanly without error:
+
+    [BreezeTTS2] Registered 7 node(s).
+    SUCCESS
 
 ---
 
@@ -323,3 +384,40 @@ sudo systemctl daemon-reload
 # Instead, start it manually or via a staggered boot script after Qwen sleeps
 
 # sudo systemctl start server_v.service
+
+---
+
+## ComfyUI Input Cleanup API
+
+I have created `cleanup_api.py` in the root of the project. Copy this file to the home directory of both servers running ComfyUI. 
+This script creates a FastAPI endpoint on port `8189` that safely deletes all files in `~/ComfyUI/input/*` when called.
+
+### Systemd Service Configuration
+
+1. Copy `cleanup_api.py` to `/home/server/cleanup_api.py`
+2. Create the systemd service file: `sudo nano /etc/systemd/system/comfy-cleanup.service`
+3. Paste the following configuration:
+
+```ini
+[Unit]
+Description=ComfyUI Input Cleanup API
+After=network.target
+
+[Service]
+User=server
+WorkingDirectory=/home/server
+# Ensure uvicorn/fastapi is available in this environment
+ExecStart=/home/server/.local/bin/uvicorn cleanup_api:app --host 0.0.0.0 --port 8189
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+4. Enable and start the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable comfy-cleanup
+sudo systemctl start comfy-cleanup
+```
