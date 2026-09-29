@@ -95,3 +95,5 @@ Do not use 1080p natively. Use these safe base resolutions (which are multiples 
 ## 5. Execution
 Because you are using an independent CLI orchestration agent, **you CAN and SHOULD run all python scripts yourself using your tools.** 
 You do not need to ask the user to run `video_generation_manager.py` or `tts_generation_manager.py`. Execute them directly and read their output.
+
+**CRITICAL BACKGROUND EXECUTION RULE:** These scripts take a very long time to complete (often 5+ minutes). If you wait synchronously for them to finish, you will severely over-consume tokens and compute resources. You MUST run them as a background task (e.g., using your tool's built-in backgrounding, or by appending `&` to the shell command) so your execution ends and the system can notify you when they complete.
