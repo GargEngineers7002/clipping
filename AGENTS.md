@@ -59,7 +59,7 @@ You can synthesize speech by writing a JSON array to `/home/garg7002/clipping/tt
 ## 4. The Media Generation Pipeline (Video)
 You can generate video/images by writing a JSON array of tasks to `/home/garg7002/clipping/video_prompts.json` and then running `python video_generation_manager.py`. 
 
-**CRITICAL RULE: DO NOT use `cat` or `read` on the `.json` files in the `workflows/` directory! They are massive and will instantly crash your context window. Rely strictly on the mapping below.**
+**CRITICAL ANTI-OVERTHINKING RULE: DO NOT use `cat`, `read`, `grep`, or write custom Python scripts (e.g., `python -c "import json..."`) to inspect or reverse-engineer the `.json` files in the `workflows/` directory! They are raw ComfyUI node graphs containing thousands of lines. If you attempt to parse them to find node IDs, you will bloat your context window and fail the task. You DO NOT need to know the internal node IDs. The orchestrator scripts (`video_generation_manager.py` and `tts_generation_manager.py`) automatically find the correct nodes and inject your variables for you. Rely STRICTLY on the payload mapping below.**
 
 **Available Workflows & Patchable Inputs:**
 - `LTX-2.5_T2V_I2V_Two_Stage_Distilled.json`: Text-to-Video / Image-to-Video (Inputs: `prompt`, `negative`, `image` (optional), `duration`, `seed`, `width`, `height`).
