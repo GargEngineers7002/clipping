@@ -6,7 +6,7 @@ import uuid
 import sys
 
 # Configuration
-COMFYUI_SERVERS = ["http://127.0.0.1:58328", "http://127.0.0.1:58329"]
+COMFYUI_SERVERS = ["http://100.72.216.28:58328", "http://100.72.216.28:58329"]
 
 OUTPUT_DIR = "/home/garg7002/clipping/ai_generated_videos"
 PROMPTS_FILE = "/home/garg7002/clipping/video_prompts.json"
