@@ -422,3 +422,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable comfy-cleanup
 sudo systemctl start comfy-cleanup
 ```
+
+if it doesn't work and throws something related to uvicorn or uv try this:
+
+```bash
+cd /home/server
+uv venv
+uv pip install fastapi uvicorn
+sudo systemctl restart comfy-cleanup.service
+```

@@ -1,5 +1,8 @@
 {
   "mcpServers": {
+    "firecrawl": {
+      "serverUrl": "https://mcp.firecrawl.dev/v2/mcp"
+    },
     "composio": {
       "serverUrl": "https://connect.composio.dev/mcp",
       "headers": {

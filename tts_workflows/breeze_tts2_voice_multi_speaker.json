@@ -1,0 +1,198 @@
+{
+  "1": {
+    "inputs": {
+      "filename_prefix": "audio/ComfyUI",
+      "format": "mp3",
+      "format.quality": "V0",
+      "audio": [
+        "2",
+        0
+      ]
+    },
+    "class_type": "SaveAudioAdvanced",
+    "_meta": {
+      "title": "Save Audio (Advanced)"
+    }
+  },
+  "2": {
+    "inputs": {
+      "text": "Alice: Hey Bob, did you finish recording the demo?\nBob: (sigh) Almost. I just need one more take.\nAlice: (laugh) That is what you said an hour ago!",
+      "pause_between_speakers": 0.3,
+      "max_new_tokens": 3000,
+      "temperature": 0.9,
+      "top_k": 50,
+      "top_p": 1,
+      "repetition_penalty": 1.1,
+      "depth_temperature": 0.9,
+      "depth_top_k": 50,
+      "depth_top_p": 1,
+      "seed": 42,
+      "breeze_model": [
+        "3",
+        0
+      ],
+      "speaker_1": [
+        "4",
+        0
+      ],
+      "speaker_2": [
+        "6",
+        0
+      ],
+      "speaker_3": [
+        "7",
+        0
+      ],
+      "speaker_4": [
+        "8",
+        0
+      ],
+      "speaker_5": [
+        "9",
+        0
+      ],
+      "speaker_6": [
+        "10",
+        0
+      ],
+      "speaker_7": [
+        "11",
+        0
+      ],
+      "speaker_8": [
+        "12",
+        0
+      ]
+    },
+    "class_type": "BreezeTTS2MultiSpeaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Multi-Speaker"
+    }
+  },
+  "3": {
+    "inputs": {
+      "model": "bf16 (best quality)",
+      "dtype": "auto",
+      "device": "auto",
+      "attention": "auto",
+      "decode_mode": "eager",
+      "download_if_missing": false
+    },
+    "class_type": "BreezeTTS2LoadModel",
+    "_meta": {
+      "title": "Breeze TTS 2 Load Model"
+    }
+  },
+  "4": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "6": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "7": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "8": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "9": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "10": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "11": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  },
+  "12": {
+    "inputs": {
+      "name": "Alice",
+      "audio": "none",
+      "reference_text": "",
+      "auto_transcribe_if_empty": true,
+      "instruction": "",
+      "cfg_scale": 1
+    },
+    "class_type": "BreezeTTS2Speaker",
+    "_meta": {
+      "title": "Breeze TTS 2 Speaker"
+    }
+  }
+}

@@ -220,12 +220,18 @@ __marimo__/
 # Media folders
 videos/*
 !videos/.gitkeep
+inspirations/*
+!inspirations/.gitkeep
+instructions/*
+!instructions/.gitkeep
 audios/*
 !audios/.gitkeep
 transcripts/*
 !transcripts/.gitkeep
 ai_generated_videos/*
 !ai_generated_videos/.gitkeep
+ai_generated_audios/tts/*
+!ai_generated_audios/tts/.gitkeep
 ai_generated_images/*
 !ai_generated_images/.gitkeep
 workflows/*

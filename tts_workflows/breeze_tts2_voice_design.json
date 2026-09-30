@@ -1,0 +1,55 @@
+{
+  "1": {
+    "inputs": {
+      "model": "bf16 (best quality)",
+      "dtype": "auto",
+      "device": "auto",
+      "attention": "auto",
+      "decode_mode": "eager",
+      "download_if_missing": false
+    },
+    "class_type": "BreezeTTS2LoadModel",
+    "_meta": {
+      "title": "Breeze TTS 2 Load Model"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "(sigh) Welcome aboard. Your journey begins now.",
+      "instruction": "A warm, thoughtful young woman with a clear voice and a calm, reflective delivery.",
+      "cfg_scale": 4,
+      "max_new_tokens": 3000,
+      "temperature": 0.9,
+      "top_k": 50,
+      "top_p": 1,
+      "repetition_penalty": 1.1,
+      "depth_temperature": 0.9,
+      "depth_top_k": 50,
+      "depth_top_p": 1,
+      "seed": 42,
+      "breeze_model": [
+        "1",
+        0
+      ]
+    },
+    "class_type": "BreezeTTS2VoiceDesign",
+    "_meta": {
+      "title": "Breeze TTS 2 Voice Design"
+    }
+  },
+  "4": {
+    "inputs": {
+      "filename_prefix": "audio/ComfyUI",
+      "format": "mp3",
+      "format.quality": "V0",
+      "audio": [
+        "3",
+        0
+      ]
+    },
+    "class_type": "SaveAudioAdvanced",
+    "_meta": {
+      "title": "Save Audio (Advanced)"
+    }
+  }
+}
