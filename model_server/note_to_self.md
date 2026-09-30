@@ -389,7 +389,7 @@ sudo systemctl daemon-reload
 
 ## ComfyUI Input Cleanup API
 
-I have created `cleanup_api.py` in the root of the project. Copy this file to the home directory of both servers running ComfyUI. 
+I have created `cleanup_api.py` in the root of the project. Copy this file to the home directory of both servers running ComfyUI.
 This script creates a FastAPI endpoint on port `8189` that safely deletes all files in `~/ComfyUI/input/*` when called.
 
 ### Systemd Service Configuration
@@ -407,7 +407,7 @@ After=network.target
 User=server
 WorkingDirectory=/home/server
 # Ensure uvicorn/fastapi is available in this environment
-ExecStart=/home/server/.local/bin/uvicorn cleanup_api:app --host 0.0.0.0 --port 8189
+ExecStart=/home/server/.local/bin/uv run uvicorn cleanup_api:app --host 0.0.0.0 --port 8189
 Restart=always
 RestartSec=5
 
@@ -415,7 +415,8 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-4. Enable and start the service:
+1. Enable and start the service:
+
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable comfy-cleanup
