@@ -93,14 +93,17 @@ Do not use 1080p natively. Use these safe base resolutions (which are multiples 
 ---
 
 ## 5. Execution
-**DO NOT RUN THE SCRIPTS YOURSELF!**
-These generation scripts take a very long time to complete (often 5+ minutes). If you run them yourself or in the background, it creates a severe hazard for logging, compute usage, and debugging errors.
+**DO NOT RUN ANY ORCHESTRATION OR GENERATION SCRIPTS YOURSELF!**
+This includes `fw_client.py`, `tts_generation_manager.py`, `video_generation_manager.py`, and `client_ag.py`. 
+These scripts take a very long time to complete and require the activated Python environment (`clipping-env`). If you run them yourself, it creates a severe hazard for logging, compute usage, and debugging.
 
 Stop your execution and explicitly ask the user to run the scripts in a separate terminal tab. 
-Provide them with the exact command to run:
+Provide them with the exact command to run, for example:
 ```bash
-python /home/garg7002/clipping/tts_generation_manager.py
+python /home/garg7002/clipping/fw_client.py
 # or
 python /home/garg7002/clipping/video_generation_manager.py
+# or
+python /home/garg7002/clipping/client_ag.py
 ```
 Tell them to reply to you once the script finishes successfully, and only then proceed to the next step.
