@@ -78,25 +78,26 @@ def patch_workflow(wf, inputs):
 
 def download_comfyui_outputs(server_url, history_result, task_id, workflow_name=""):
     saved_files = []
-    # Output can be in multiple nodes
+    # Output can be in multiple nodes, and ComfyUI categorizes them by 'images', 'gifs', or 'videos'
     for node_id, node_output in history_result.get("outputs", {}).items():
-        if "images" in node_output:
-            for item in node_output["images"]:
-                fname = item["filename"]
-                url = f"{server_url}/view?filename={fname}&type=output"
-                r = requests.get(url)
-                if r.status_code == 200:
-                    ext = os.path.splitext(fname)[1]
-                    out_dir = OUTPUT_DIR
-                    if workflow_name.startswith("image_") or ext.lower() in ['.png', '.jpg', '.jpeg']:
-                        out_dir = "/home/garg7002/clipping/ai_generated_images"
-                        os.makedirs(out_dir, exist_ok=True)
-                        
-                    out_path = os.path.join(out_dir, f"{task_id}_{node_id}{ext}")
-                    with open(out_path, "wb") as f:
-                        f.write(r.content)
-                    saved_files.append(out_path)
-                    print(f"  -> Saved output to: {out_path}")
+        for media_type in ["images", "gifs", "videos"]:
+            if media_type in node_output:
+                for item in node_output[media_type]:
+                    fname = item["filename"]
+                    url = f"{server_url}/view?filename={fname}&type=output"
+                    r = requests.get(url)
+                    if r.status_code == 200:
+                        ext = os.path.splitext(fname)[1]
+                        out_dir = OUTPUT_DIR
+                        if workflow_name.startswith("image_") or ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
+                            out_dir = "/home/garg7002/clipping/ai_generated_images"
+                            os.makedirs(out_dir, exist_ok=True)
+                            
+                        out_path = os.path.join(out_dir, f"{task_id}_{node_id}{ext}")
+                        with open(out_path, "wb") as f:
+                            f.write(r.content)
+                        saved_files.append(out_path)
+                        print(f"  -> Saved output to: {out_path}")
     return saved_files
 
 def generate_video(task, server_url):
@@ -190,7 +191,8 @@ def main():
              cleanup_url = server.replace(":58329", ":8189") + "/cleanup"
         try:
             r = requests.post(cleanup_url, timeout=5)
-            print(f"Cleanup triggered on {server}: {r.json()}")
+            if r.status_code == 200:
+                print(f"Cleanup triggered on {server}")
         except Exception as e:
             pass # ignore if cleanup server not running there
 
