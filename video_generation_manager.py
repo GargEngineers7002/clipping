@@ -185,16 +185,28 @@ def main():
     free_comfyui_vram()
     
     # Trigger cleanup on the server
+    cleaned_ips = set()
     for server in COMFYUI_SERVERS:
-        cleanup_url = server.replace(":58328", ":8189").replace(":8189", ":8189") + "/cleanup"
-        if "58329" in server:
-             cleanup_url = server.replace(":58329", ":8189") + "/cleanup"
+        # Extract IP from http://IP:PORT
+        ip = server.split(":")[1].replace("//", "")
+        if ip in cleaned_ips:
+            continue
+            
+        cleanup_url = f"http://{ip}:8189/cleanup"
         try:
             r = requests.post(cleanup_url, timeout=5)
             if r.status_code == 200:
-                print(f"Cleanup triggered on {server}")
+                try:
+                    data = r.json()
+                    count = data.get("deleted_files", "unknown")
+                    print(f"[Cleanup] {ip} SUCCESS: {count} files removed.")
+                except Exception as parse_e:
+                    print(f"[Cleanup] {ip} SUCCESS (Raw Response): {r.text.strip()}")
+            else:
+                print(f"[Cleanup] {ip} FAILED with status {r.status_code}: {r.text.strip()}")
+            cleaned_ips.add(ip)
         except Exception as e:
-            pass # ignore if cleanup server not running there
+            print(f"[Cleanup] {ip} ERROR: Could not connect to cleanup API ({e})")
 
     # Rewrite the prompts file retaining only the failed tasks (recovery mechanism)
     with open(PROMPTS_FILE, "w") as f:

@@ -184,12 +184,21 @@ def main():
             
 
     # Trigger cleanup on the server
-    cleanup_url = server.replace(":58328", ":8189").replace(":8188", ":8189") + "/cleanup"
+    ip = server.split(":")[1].replace("//", "")
+    cleanup_url = f"http://{ip}:8189/cleanup"
     try:
         r = requests.post(cleanup_url, timeout=5)
-        print(f"Cleanup triggered: {r.json()}")
+        if r.status_code == 200:
+            try:
+                data = r.json()
+                count = data.get("deleted_files", "unknown")
+                print(f"[Cleanup] {ip} SUCCESS: {count} files removed.")
+            except Exception:
+                print(f"[Cleanup] {ip} SUCCESS (Raw Response): {r.text.strip()}")
+        else:
+            print(f"[Cleanup] {ip} FAILED: {r.status_code}")
     except Exception as e:
-        print(f"Warning: Failed to trigger cleanup API: {e}")
+        print(f"[Cleanup] {ip} ERROR: Failed to connect to cleanup API ({e})")
 
     with open(PROMPTS_FILE, "w") as f:
         json.dump([], f)
