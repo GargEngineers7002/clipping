@@ -3,11 +3,12 @@
 ## 1. Goal
 When given a topic, campaign URL, or raw media file, your goal is to autonomously:
 1. **Research & Plan:** Use web search to find viral angles, hooks, and trending discussions.
-2. **Download & Transcribe:** Download videos/audio using `yt-dlp`. Extract transcripts using `fw_client.py` for high-quality analysis.
+2. **Download & Transcribe:** Download videos/audio using `yt-dlp`. Extract transcripts using `fw_client.py`. (Ask user to run `fw_client.py` - DO NOT run it natively).
 3. **Generate Audio (TTS):** Use `tts_generation_manager.py` with Breeze TTS 2 workflows to synthesize high-quality voiceovers.
 4. **Generate Media (Video/Image):** Use `video_generation_manager.py` to create AI video and images based on transcripts or TTS audio.
-5. **Edit & Assemble:** Use `ffmpeg-video-editor` and `ffmpeg` to assemble, cut, trim, overlay text, and format media appropriately.
-6. **Publish:** Auto-publish across platforms using `composio` MCP.
+5. **Video Anonymization:** Use `client_ag.py` to achieve full-scene anonymization that renders backgrounds and identities unrecognizable while preserving emotional expressions and activities via a lightweight video-to-video GAN. Global Scene Transformation converts the entire frame—bodies, clothing, and background—into a stylized format. (Ask user to run `client_ag.py` - DO NOT run it natively).
+6. **Edit & Assemble:** Use `ffmpeg-video-editor` and `ffmpeg` to assemble, cut, trim, overlay text, and format media appropriately.
+7. **Publish:** Auto-publish across platforms using `composio` MCP.
 
 ---
 
