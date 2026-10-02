@@ -63,12 +63,16 @@ You can generate video/images by writing a JSON array of tasks to `/home/garg700
 **CRITICAL ANTI-OVERTHINKING RULE: DO NOT use `cat`, `read`, `grep`, or write custom Python scripts (e.g., `python -c "import json..."`) to inspect or reverse-engineer the `.json` files in the `workflows/` directory! They are raw ComfyUI node graphs containing thousands of lines. If you attempt to parse them to find node IDs, you will bloat your context window and fail the task. You DO NOT need to know the internal node IDs. The orchestrator scripts (`video_generation_manager.py` and `tts_generation_manager.py`) automatically find the correct nodes and inject your variables for you. Rely STRICTLY on the payload mapping below.**
 
 **Available Workflows & Patchable Inputs:**
-- `LTX-2.5_T2V_I2V_Two_Stage_Distilled.json`: Text-to-Video / Image-to-Video (Inputs: `prompt`, `negative`, `image` (optional), `duration`, `seed`, `width`, `height`).
+- `video_ltx2_5_t2v.json`: Text-to-Video (Inputs: `prompt`, `negative`, `duration`, `seed`, `width`, `height`).
+- `video_ltx2_5_i2v.json`: Image-to-Video (Inputs: `prompt`, `negative`, `image`, `duration`, `seed`, `width`, `height`).
+- `video_ltx2_5_flf2v.json`: First-Last-Frame-to-Video (Inputs: `prompt`, `negative`, `image` (start), `image2` (end), `duration`, `seed`, `width`, `height`).
 - `LTX-2.5_A2V_Two_Stage_Distilled.json`: Audio-driven video. (Inputs: `prompt`, `negative`, `audio` (absolute path), `image` (optional), `duration`, `seed`, `width`, `height`).
 - `LTX-2.5_ICLoRA_Union_Control_Distilled.json`: Video-to-Video. (Inputs: `prompt`, `negative`, `video` (absolute path), `seed`, `width`, `height`).
 - `LTX-2.5_ICLoRA_Ingredients_Single_Stage_Distilled.json`: Character Reference. (Inputs: `prompt`, `negative`, `image` (reference sheet), `seed`, `width`, `height`).
 - `image_flux2_text_to_image_9b.json`: Text-to-Image. (Inputs: `prompt`, `negative`, `seed`, `width`, `height`).
 - `image_qwen_image_edit_2509.json`: Image-to-Image / Edit. (Inputs: `prompt`, `image`, `seed`, `width`, `height`).
+
+**CRITICAL DURATION RULE:** Video diffusion models (like LTX-Video) have a hard VRAM limit. You **MUST NOT** request or generate videos longer than **10 seconds**. If you have a long audio file (e.g., a 40-second podcast scene) and want to use the `A2V` workflow, you MUST use `ffmpeg` to slice the audio into smaller 5-10 second clips first, generate a video for each short clip, and then assemble them later. DO NOT pass a >10s audio file to the `A2V` workflow!
 
 **Safe Resolutions (VRAM Constraints):**
 Do not use 1080p natively. Use these safe base resolutions (which are multiples of 32):
