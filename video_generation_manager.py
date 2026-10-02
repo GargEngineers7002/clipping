@@ -100,11 +100,11 @@ def download_comfyui_outputs(server_url, history_result, task_id, workflow_name=
     return saved_files
 
 def generate_video(task, server_url):
-    print(f"\n>> Processing task using workflow: {task.get('workflow')}")
+    print(f"\n>> Processing task using workflow: {task.get('workflow')} on {server_url}")
     wf_path = os.path.join(WORKFLOWS_DIR, task['workflow'])
     if not os.path.exists(wf_path):
         print(f"ERROR: Workflow {wf_path} not found!")
-        return
+        return False
         
     with open(wf_path) as f:
         wf = json.load(f)
@@ -125,7 +125,7 @@ def generate_video(task, server_url):
     r = requests.post(f"{server_url}/prompt", json=payload, timeout=30)
     r.raise_for_status()
     prompt_id = r.json()["prompt_id"]
-    print(f"   -> Queued workflow! Prompt ID: {prompt_id}")
+    print(f"   -> Queued workflow! Prompt ID: {prompt_id} on {server_url}")
     
     # Wait for result
     start = time.time()
@@ -135,11 +135,12 @@ def generate_video(task, server_url):
         if r.status_code == 200:
             hist = r.json()
             if prompt_id in hist:
-                print(f"   -> Generation complete!")
+                print(f"   -> Generation complete on {server_url}!")
                 download_comfyui_outputs(server_url, hist[prompt_id], client_id[:8], task.get('workflow', ''))
-                return
+                return True
         time.sleep(5)
-    print(f"   -> ERROR: Generation timed out!")
+    print(f"   -> ERROR: Generation timed out on {server_url}!")
+    return False
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -157,34 +158,50 @@ def main():
         
     print(f"Found {len(tasks)} tasks. Initiating pipeline...")
     
-    
-    
     print("\n--- Generating Media via ComfyUI ---")
-    for idx, task in enumerate(tasks):
-        server = COMFYUI_SERVERS[idx % len(COMFYUI_SERVERS)]
-        try:
-            generate_video(task, server)
-        except Exception as e:
-            print(f"ERROR executing task: {e}")
+    
+    failed_tasks = []
+    
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    with ThreadPoolExecutor(max_workers=len(COMFYUI_SERVERS)) as executor:
+        future_to_task = {}
+        for idx, task in enumerate(tasks):
+            server = COMFYUI_SERVERS[idx % len(COMFYUI_SERVERS)]
+            future = executor.submit(generate_video, task, server)
+            future_to_task[future] = task
+            
+        for future in as_completed(future_to_task):
+            task = future_to_task[future]
+            try:
+                success = future.result()
+                if not success:
+                    failed_tasks.append(task)
+            except Exception as e:
+                print(f"ERROR executing task: {e}")
+                failed_tasks.append(task)
             
     free_comfyui_vram()
     
-    
-    # Clear tasks file after successful run
-
     # Trigger cleanup on the server
-    cleanup_url = server.replace(":58328", ":8189").replace(":8188", ":8189") + "/cleanup"
-    try:
-        import requests
-        r = requests.post(cleanup_url, timeout=5)
-        print(f"Cleanup triggered: {r.json()}")
-    except Exception as e:
-        print(f"Warning: Failed to trigger cleanup API: {e}")
+    for server in COMFYUI_SERVERS:
+        cleanup_url = server.replace(":58328", ":8189").replace(":8189", ":8189") + "/cleanup"
+        if "58329" in server:
+             cleanup_url = server.replace(":58329", ":8189") + "/cleanup"
+        try:
+            r = requests.post(cleanup_url, timeout=5)
+            print(f"Cleanup triggered on {server}: {r.json()}")
+        except Exception as e:
+            pass # ignore if cleanup server not running there
 
+    # Rewrite the prompts file retaining only the failed tasks (recovery mechanism)
     with open(PROMPTS_FILE, "w") as f:
-        json.dump([], f)
-    
-    print("\nPipeline completed successfully!")
+        json.dump(failed_tasks, f, indent=2)
+        
+    if failed_tasks:
+        print(f"\nPipeline completed, but {len(failed_tasks)} tasks failed. They have been left in {PROMPTS_FILE} so you can fix and rerun.")
+    else:
+        print("\nPipeline completed successfully!")
 
 if __name__ == "__main__":
     main()

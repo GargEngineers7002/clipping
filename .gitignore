@@ -241,3 +241,4 @@ workflows/*
 clipping_env/
 video_prompts.json
 STATE_PLAN.md
+ai_transformed_videos/

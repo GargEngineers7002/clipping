@@ -12,6 +12,7 @@ SERVERS = [
 ]
 
 INPUT_DIR = "/home/garg7002/clipping/videos"
+OUTPUT_BASE_DIR = "/home/garg7002/clipping/ai_transformed_videos"
 
 def stylize_video(file_path, server_url, model_type):
     filename = os.path.basename(file_path)
@@ -23,13 +24,15 @@ def stylize_video(file_path, server_url, model_type):
             response = requests.post(server_url, files={"file": f}, data={"model_type": model_type}, timeout=600)
             
         if response.status_code == 200:
-            # We trust the server to return the appropriately prefixed filename in content-disposition
-            # But as a fallback we will name it explicitly
-            out_name = os.path.join(INPUT_DIR, f"{model_type}_anonymized_{filename}")
+            # Create specific output directory based on model type
+            model_out_dir = os.path.join(OUTPUT_BASE_DIR, model_type.capitalize())
+            os.makedirs(model_out_dir, exist_ok=True)
+            
+            out_name = os.path.join(model_out_dir, f"{model_type}_{filename}")
             with open(out_name, "wb") as out_f:
                 out_f.write(response.content)
             elapsed = time.time() - start_time
-            print(f"[{filename} | {model_type}] Successfully anonymized and downloaded in {elapsed:.1f}s")
+            print(f"[{filename} | {model_type}] Successfully anonymized and downloaded to {out_name} in {elapsed:.1f}s")
         else:
             print(f"[{filename} | {model_type}] Error: Server returned {response.status_code} - {response.text}")
     except Exception as e:
