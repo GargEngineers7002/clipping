@@ -2,6 +2,7 @@ import os
 import time
 import json
 import requests
+from requests_toolbelt import MultipartEncoder
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # --- CONFIGURATION ---
@@ -28,9 +29,15 @@ def process_video(video_path):
     try:
         # We use a context manager for the file so it closes properly
         with open(video_path, "rb") as f:
-            # Send file as multipart/form-data
-            files = {"file": (filename, f)}
-            response = requests.post(SERVER_URL, files=files)
+            # Stream file as multipart/form-data directly from disk (O(1) RAM usage)
+            encoder = MultipartEncoder(
+                fields={"file": (filename, f, "application/octet-stream")}
+            )
+            response = requests.post(
+                SERVER_URL,
+                data=encoder,
+                headers={"Content-Type": encoder.content_type}
+            )
             
         # Raise an exception if the server returns an HTTP error code (like 500)
         response.raise_for_status()

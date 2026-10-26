@@ -407,7 +407,7 @@ After=network.target
 User=server
 WorkingDirectory=/home/server
 # Ensure uvicorn/fastapi is available in this environment
-ExecStart=/home/server/.local/bin/uv run uvicorn cleanup_api:app --host 0.0.0.0 --port 8189
+ExecStart=/home/server/.venv/bin/uvicorn cleanup_api:app --host 0.0.0.0 --port 8189
 Restart=always
 RestartSec=5
 
@@ -430,4 +430,11 @@ cd /home/server
 uv venv
 uv pip install fastapi uvicorn
 sudo systemctl restart comfy-cleanup.service
+```
+
+To check the status and logs:
+
+```bash
+systemctl status comfy-cleanup.service
+journalctl -u comfy-cleanup.service
 ```

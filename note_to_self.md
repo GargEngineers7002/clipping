@@ -1,16 +1,18 @@
-Tools Installed in the opencode machine:
+## Tools Installed in the opencode machine
 
-yt-dlp, and ffmpeg, and composio cli
+- yt-dlp, and ffmpeg, and composio cli
 
-faster-whisper Installation:
+- faster-whisper Installation:
 
-just go in fw-server directory and follow the installation on another server.
+- just go in fw-server directory and follow the installation on another server.
 
 OPENCODE_EXPERIMENTAL=true opencode --agent clipping_agent
 
+- cleanup_api.py must be setup on every server with comfyui and look model_server/note_to_self.md for setup method.
 
 opencode.json:
 
+```json
 {
   "$schema": "https://opencode.ai/config.json",
   "autoupdate": false,
@@ -109,3 +111,46 @@ opencode.json:
     }
   }
 }
+```
+
+AnimeGANv3 Installation:
+
+```bash
+git clone https://github.com/GargEngineers7002/AnimeGANv3.git
+cd AnimeGANv3
+uv venv
+uv pip install fastapi uvicorn python-multipart onnxruntime-gpu opencv-python pillow numpy
+aria2c -Z -x 16 -s 16 -d deploy/ \
+"https://github.com/TachibanaYoshino/AnimeGANv3/releases/download/v1.1.0/AnimeGANv3_Hayao_36.onnx" \
+"https://github.com/TachibanaYoshino/AnimeGANv3/releases/download/v1.1.0/AnimeGANv3_Shinkai_37.onnx"
+```
+
+```bash
+sudo nvim /etc/systemd/system/server_ag.service
+```
+
+```ini
+[Unit]
+Description=AnimeGANv3 server
+After=network.target
+
+[Service]
+User=server
+WorkingDirectory=/home/server/.keras/datasets/AnimeGANv3
+# Environment="CUDA_VISIBLE_DEVICES=0"
+# Ensure uvicorn/fastapi is available in this environment
+ExecStart=/home/server/.keras/datasets/AnimeGANv3/.venv/bin/uvicorn server_ag:app --host 0.0.0.0 --port 55329
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+1. Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable server_ag
+sudo systemctl start server_ag
+```
