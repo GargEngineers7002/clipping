@@ -1,5 +1,6 @@
 import os
 import requests
+from requests_toolbelt import MultipartEncoder
 import glob
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -21,7 +22,19 @@ def stylize_video(file_path, server_url, model_type):
     
     try:
         with open(file_path, "rb") as f:
-            response = requests.post(server_url, files={"file": f}, data={"model_type": model_type}, timeout=600)
+            encoder = MultipartEncoder(
+                fields={
+                    "file": (filename, f, "video/mp4"),
+                    "model_type": model_type
+                }
+            )
+            response = requests.post(
+                server_url,
+                data=encoder,
+                headers={"Content-Type": encoder.content_type},
+                stream=True,
+                timeout=600
+            )
             
         if response.status_code == 200:
             # Create specific output directory based on model type
@@ -30,7 +43,9 @@ def stylize_video(file_path, server_url, model_type):
             
             out_name = os.path.join(model_out_dir, f"{model_type}_{filename}")
             with open(out_name, "wb") as out_f:
-                out_f.write(response.content)
+                for chunk in response.iter_content(chunk_size=8192 * 1024):
+                    if chunk:
+                        out_f.write(chunk)
             elapsed = time.time() - start_time
             print(f"[{filename} | {model_type}] Successfully anonymized and downloaded to {out_name} in {elapsed:.1f}s")
         else:

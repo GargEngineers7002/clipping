@@ -6,8 +6,9 @@ import fw_client
 
 @patch("fw_client.requests.post")
 @patch("fw_client.os.path.exists")
-@patch("builtins.open", new_callable=mock_open)
+@patch("builtins.open", new_callable=mock_open, read_data=b"mock video data")
 def test_process_video_success(mock_file, mock_exists, mock_post):
+    mock_file.return_value.getvalue.return_value = b"mock video data"
     # Setup
     video_path = "/fake/dir/video.mp4"
     mock_exists.return_value = False  # Transcript does not exist
